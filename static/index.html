@@ -1,0 +1,296 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>CropCast</title>
+<meta name="description" content="Next-season crop yield forecasts for 101 countries, with calibrated uncertainty and an honest benchmark.">
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=Familjen+Grotesk:wght@400;500;600;700&display=swap" rel="stylesheet">
+<style>
+:root{
+  --bg:#F3F5EE; --surface:#FFFFFF; --ink:#1D2B22; --muted:#5B6B60; --rule:#CFD6C9;
+  --leaf:#2F6B45; --leaf-soft:#DDEADF; --grain:#D9A520; --grain-soft:#F4E3B0; --down:#A3462D;
+  --radius-lg:14px; --radius-sm:6px;
+}
+@media (prefers-color-scheme: dark){
+  :root:not([data-theme="light"]){
+    --bg:#141B16; --surface:#1C251F; --ink:#E6ECE3; --muted:#9AA99E; --rule:#2F3B33;
+    --leaf:#6FB386; --leaf-soft:#22392A; --grain:#E8B93A; --grain-soft:#4A3D17; --down:#E08A6E;
+  }
+}
+:root[data-theme="dark"]{
+  --bg:#141B16; --surface:#1C251F; --ink:#E6ECE3; --muted:#9AA99E; --rule:#2F3B33;
+  --leaf:#6FB386; --leaf-soft:#22392A; --grain:#E8B93A; --grain-soft:#4A3D17; --down:#E08A6E;
+}
+*{box-sizing:border-box}
+html{-webkit-text-size-adjust:100%}
+body{margin:0;background:var(--bg);color:var(--ink);font:400 16px/1.55 "Familjen Grotesk",system-ui,sans-serif;font-variant-numeric:tabular-nums}
+a{color:var(--leaf)}
+:focus-visible{outline:3px solid var(--grain);outline-offset:2px;border-radius:4px}
+.wrap{max-width:1120px;margin:0 auto;padding:0 16px}
+
+header.wrap{padding-top:32px;padding-bottom:8px}
+.brand{display:flex;align-items:baseline;gap:14px;flex-wrap:wrap}
+.brand h1{margin:0;font-size:clamp(2rem,5vw,2.75rem);font-weight:700;letter-spacing:-.03em;line-height:1}
+.brand p{margin:0;color:var(--muted);max-width:52ch}
+
+main{display:grid;grid-template-columns:300px 1fr;gap:40px;align-items:start}
+main.wrap{padding-top:24px;padding-bottom:56px}
+@media (max-width:860px){main{grid-template-columns:1fr;gap:24px}}
+
+.panel{background:var(--surface);border:1px solid var(--rule);border-radius:var(--radius-lg);padding:20px;position:sticky;top:16px}
+@media (max-width:860px){.panel{position:static}}
+.panel h2{font-size:1rem;margin:0 0 14px;font-weight:600}
+label{display:block;font-size:.875rem;font-weight:500;margin:14px 0 6px}
+select,input[type=number]{width:100%;font:inherit;color:var(--ink);background:var(--bg);border:1px solid var(--rule);border-radius:var(--radius-sm);padding:9px 10px}
+.field{display:grid;grid-template-columns:1fr 92px;gap:10px;align-items:center}
+input[type=range]{width:100%;accent-color:var(--leaf)}
+.hint{font-size:.8125rem;color:var(--muted);margin:4px 0 0}
+.reset{margin-top:18px;font:inherit;font-size:.875rem;background:none;border:1px solid var(--rule);color:var(--ink);border-radius:var(--radius-sm);padding:8px 12px;cursor:pointer}
+.reset:hover{border-color:var(--leaf)}
+
+.forecast{display:flex;flex-wrap:wrap;align-items:flex-end;gap:8px 28px}
+.big{font-size:clamp(3rem,9vw,5.25rem);font-weight:700;letter-spacing:-.04em;line-height:.9}
+.big small{font-size:.32em;font-weight:500;letter-spacing:0;margin-left:6px;color:var(--muted)}
+.range{max-width:34ch;color:var(--muted);padding-bottom:6px}
+.range strong{color:var(--ink);font-weight:600}
+.delta{font-weight:600}
+.delta.up{color:var(--leaf)} .delta.down{color:var(--down)}
+.sub{font-size:1.125rem;margin:0 0 6px;font-weight:500}
+
+figure{margin:20px 0 0}
+#chart{width:100%;height:auto;display:block}
+figcaption{font-size:.8125rem;color:var(--muted);display:flex;gap:18px;flex-wrap:wrap;margin-top:6px}
+.key{display:inline-flex;align-items:center;gap:6px}
+.sw{width:14px;height:10px;border-radius:2px;display:inline-block}
+
+section{border-top:1px solid var(--rule);padding-top:22px;margin-top:30px}
+section h2{font-size:1.25rem;margin:0 0 4px;font-weight:600;letter-spacing:-.01em}
+section > p{margin:0 0 16px;color:var(--muted);max-width:68ch}
+
+.bars{display:grid;gap:8px}
+.bar{display:grid;grid-template-columns:150px 1fr 64px;gap:12px;align-items:center;font-size:.9375rem}
+.bar .track{position:relative;height:14px}
+.bar .track::before{content:"";position:absolute;left:50%;top:-3px;bottom:-3px;border-left:1px solid var(--rule)}
+.bar .fill{position:absolute;top:0;height:100%;border-radius:3px}
+.bar .val{text-align:right;font-weight:600}
+@media (max-width:520px){.bar{grid-template-columns:110px 1fr 56px;font-size:.875rem}}
+button.bar{all:unset;display:grid;grid-template-columns:150px 1fr 64px;gap:12px;align-items:center;font-size:.9375rem;cursor:pointer;padding:3px 4px;border-radius:4px}
+@media (max-width:520px){button.bar{grid-template-columns:110px 1fr 56px;font-size:.875rem}}
+button.bar:hover{background:var(--leaf-soft)}
+button.bar[aria-current="true"]{background:var(--leaf-soft);font-weight:600}
+button.bar:focus-visible{outline:3px solid var(--grain)}
+
+table{width:100%;border-collapse:collapse;font-size:.9375rem}
+th,td{text-align:left;padding:10px 8px;border-bottom:1px solid var(--rule);vertical-align:top}
+th{font-weight:600;font-size:.875rem;color:var(--muted)}
+td.num,th.num{text-align:right}
+tr.ours td{font-weight:600}
+.tablewrap{overflow-x:auto}
+.callout{background:var(--grain-soft);border-radius:var(--radius-sm);padding:12px 14px;margin:16px 0 0;max-width:68ch}
+
+footer{color:var(--muted);font-size:.875rem}
+footer.wrap{padding-top:20px;padding-bottom:40px}
+footer .inner{border-top:1px solid var(--rule);padding-top:20px;max-width:80ch}
+.error{color:var(--down);font-weight:500}
+@media (prefers-reduced-motion:no-preference){ #band,#fline{transition:opacity .25s} }
+</style>
+</head>
+<body>
+<header class="wrap">
+  <div class="brand">
+    <h1>CropCast</h1>
+    <p>Next-season yield forecasts for 10 staple crops across 101 countries, with a range you can trust.</p>
+  </div>
+</header>
+
+<main class="wrap">
+  <aside class="panel" aria-label="Forecast inputs">
+    <h2>Pick a field to forecast</h2>
+    <label for="area">Country</label>
+    <select id="area"></select>
+    <label for="item">Crop</label>
+    <select id="item"></select>
+
+    <h2 style="margin-top:22px">Next season's conditions</h2>
+    <p class="hint" style="margin-top:-8px">Starts at last recorded season. Drag to test a scenario.</p>
+    <label for="temp">Average temperature, °C</label>
+    <div class="field"><input type="range" id="temp-r" aria-label="Temperature slider"><input type="number" id="temp" step="0.1"></div>
+    <label for="rain">Annual rainfall, mm</label>
+    <div class="field"><input type="range" id="rain-r" aria-label="Rainfall slider"><input type="number" id="rain" step="10"></div>
+    <label for="pest">Pesticide use, tonnes</label>
+    <div class="field"><input type="range" id="pest-r" aria-label="Pesticide slider"><input type="number" id="pest" step="1"></div>
+    <button class="reset" id="reset" type="button">Reset to last season</button>
+  </aside>
+
+  <div>
+    <p class="sub" id="title">Loading…</p>
+    <div class="forecast" aria-live="polite">
+      <div class="big" id="big">–<small>t/ha</small></div>
+      <p class="range" id="range"></p>
+    </div>
+    <figure>
+      <svg id="chart" viewBox="0 0 720 280" role="img" aria-labelledby="chart-desc"><desc id="chart-desc">Yield history and next-season forecast</desc></svg>
+      <figcaption>
+        <span class="key"><span class="sw" style="background:var(--leaf)"></span>Recorded yield</span>
+        <span class="key"><span class="sw" style="background:var(--grain)"></span>Forecast and 80% range</span>
+      </figcaption>
+    </figure>
+
+    <section>
+      <h2>What moved this forecast</h2>
+      <p>Each factor's push on the change from last season, in percent. Recent momentum usually dominates; national climate averages rarely move it more than a point or two.</p>
+      <div class="bars" id="drivers"></div>
+    </section>
+
+    <section>
+      <h2>Every crop in <span id="area-name">this country</span></h2>
+      <p>Expected change from last season under the same conditions. Select a crop to forecast it.</p>
+      <div class="bars" id="compare"></div>
+    </section>
+
+    <section>
+      <h2>Why this isn't a "99% accurate" model</h2>
+      <p>Most public models on this dataset report R² above 0.99. That comes from a random train/test split: the data repeats each country-crop-year with different weather-station temperatures, so <strong id="leak">most</strong> of the test rows have an exact twin in training. CropCast is scored on seasons it has never seen.</p>
+      <div class="tablewrap"><table id="bench">
+        <thead><tr><th>Model and test setup</th><th class="num">R²</th><th class="num">Mean error, t/ha</th></tr></thead>
+        <tbody></tbody>
+      </table></div>
+      <p class="callout" id="callout"></p>
+    </section>
+  </div>
+</main>
+
+<footer class="wrap"><div class="inner">
+  Data: FAO and World Bank via Kaggle, 1990–2013 (yields in the source are hg/ha; shown here as t/ha). Model: LightGBM predicting the change in log-yield from last season, with split-conformal intervals. API docs at <a href="/docs">/docs</a>.
+</div></footer>
+
+<script>
+const $ = s => document.querySelector(s);
+const tha = hg => hg / 10000;
+const fmt = (v, d=2) => Number(v).toLocaleString('en-IN',{minimumFractionDigits:d,maximumFractionDigits:d});
+const pct = v => (v>0?'+':'') + fmt(v,1) + '%';
+let META, HIST, BASE = {}, timer, LAST;
+
+async function api(path, body){
+  const r = await fetch(path, body ? {method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify(body)} : {});
+  if(!r.ok){ const e = await r.json().catch(()=>({})); throw new Error(e.detail || r.statusText); }
+  return r.json();
+}
+
+function setRanges(h){
+  const t = h.temp.at(-1), r = h.rain.at(-1), p = h.pest.at(-1);
+  BASE = {temp:t, rain:r, pest:p};
+  const spec = {temp:[t-5,t+5,0.1], rain:[Math.max(0,r*0.4),r*1.6,1], pest:[0,Math.max(10,p*2.5),Math.max(1,Math.round(p/200))]};
+  for(const k of ['temp','rain','pest']){
+    const [lo,hi,st] = spec[k], rg = $('#'+k+'-r');
+    rg.min = lo; rg.max = hi; rg.step = st; rg.value = BASE[k]; $('#'+k).value = +BASE[k].toFixed(k==='temp'?2:0);
+  }
+}
+
+function scenario(){
+  return {area:$('#area').value, item:$('#item').value, temp:+$('#temp').value, rain:+$('#rain').value, pest:+$('#pest').value};
+}
+
+function drawChart(res){
+  const h = res.history, W = Math.max(340, Math.min(720, $('#chart').parentElement.clientWidth || 720)), H = Math.round(W*0.42)+40, P={l:44,r:14,t:16,b:30};
+  $('#chart').setAttribute('viewBox', `0 0 ${W} ${H}`);
+  const xs = [...h.Year, res.year], ys = [...h.y.map(tha), tha(res.low), tha(res.high)];
+  const x0=Math.min(...xs), x1=Math.max(...xs), y0=Math.min(...ys)*0.92, y1=Math.max(...ys)*1.05;
+  const X = v => P.l + (v-x0)/(x1-x0)*(W-P.l-P.r), Y = v => H-P.b - (v-y0)/(y1-y0)*(H-P.t-P.b);
+  let s = `<desc id="chart-desc">Yield of ${res.item} from ${h.Year[0]} to ${h.Year.at(-1)} with forecast for ${res.year}</desc>`;
+  const ticks = 4;
+  for(let i=0;i<=ticks;i++){
+    const v = y0 + (y1-y0)*i/ticks;
+    s += `<line x1="${P.l}" x2="${W-P.r}" y1="${Y(v)}" y2="${Y(v)}" stroke="var(--rule)"/>`;
+    s += `<text x="${P.l-8}" y="${Y(v)+4}" text-anchor="end" font-size="12" fill="var(--muted)">${fmt(v, v<10?1:0)}</text>`;
+  }
+  const step = Math.ceil((x1-x0)/(W<500?4:6));
+  for(let yr=x0; yr<=x1; yr+=step) s += `<text x="${X(yr)}" y="${H-8}" text-anchor="middle" font-size="12" fill="var(--muted)">${yr}</text>`;
+  if((x1-x0)%step) s += `<text x="${X(x1)}" y="${H-8}" text-anchor="middle" font-size="12" font-weight="600" fill="var(--ink)">${x1}</text>`;
+  const lx = h.Year.at(-1), ly = tha(h.y.at(-1));
+  s += `<polygon id="band" points="${X(lx)},${Y(ly)} ${X(res.year)},${Y(tha(res.high))} ${X(res.year)},${Y(tha(res.low))}" fill="var(--grain-soft)" stroke="var(--grain)" stroke-width="1"/>`;
+  s += `<polyline fill="none" stroke="var(--leaf)" stroke-width="2.5" stroke-linejoin="round" points="${h.Year.map((yr,i)=>X(yr)+','+Y(tha(h.y[i]))).join(' ')}"/>`;
+  s += `<line id="fline" x1="${X(lx)}" y1="${Y(ly)}" x2="${X(res.year)}" y2="${Y(tha(res.yield_hg_ha))}" stroke="var(--grain)" stroke-width="2.5" stroke-dasharray="5 4"/>`;
+  s += `<circle cx="${X(res.year)}" cy="${Y(tha(res.yield_hg_ha))}" r="6" fill="var(--grain)" stroke="var(--surface)" stroke-width="2"/>`;
+  s += `<circle cx="${X(lx)}" cy="${Y(ly)}" r="4" fill="var(--leaf)"/>`;
+  $('#chart').innerHTML = s;
+}
+
+function bars(el, rows, opts={}){
+  const max = Math.max(1, ...rows.map(r=>Math.abs(r.v)));
+  el.innerHTML = rows.map(r => {
+    const w = Math.abs(r.v)/max*50, left = r.v>=0 ? 50 : 50-w;
+    const tag = opts.onPick ? 'button' : 'div';
+    const attrs = opts.onPick ? ` type="button" data-item="${r.label}" aria-current="${r.label===opts.current}"` : '';
+    return `<${tag} class="bar"${attrs}><span>${r.label}</span><span class="track"><span class="fill" style="left:${left}%;width:${w}%;background:${r.v>=0?'var(--leaf)':'var(--down)'}"></span></span><span class="val">${pct(r.v)}</span></${tag}>`;
+  }).join('');
+  if(opts.onPick) el.querySelectorAll('button').forEach(b => b.onclick = () => opts.onPick(b.dataset.item));
+}
+
+async function run(){
+  const sc = scenario();
+  try{
+    const [res, cmp] = await Promise.all([api('/api/predict', sc), api('/api/compare', {area:sc.area, temp:sc.temp, rain:sc.rain, pest:sc.pest})]);
+    $('#title').textContent = `${res.item} in ${sc.area}, ${res.year} forecast`;
+    $('#big').innerHTML = `${fmt(tha(res.yield_hg_ha))}<small>t/ha</small>`;
+    const up = res.change_pct >= 0;
+    $('#range').innerHTML = `<span class="delta ${up?'up':'down'}">${pct(res.change_pct)}</span> on ${res.year-1} (${fmt(tha(res.last_yield))} t/ha). 80% of the time the real yield lands between <strong>${fmt(tha(res.low))}</strong> and <strong>${fmt(tha(res.high))}</strong> t/ha.`;
+    LAST = res; drawChart(res);
+    bars($('#drivers'), res.drivers.map(d=>({label:d.name, v:d.pct})));
+    $('#area-name').textContent = sc.area;
+    bars($('#compare'), cmp.map(c=>({label:c.item, v:c.change_pct})), {current:res.item, onPick: item => { $('#item').value = item; loadCrop(); }});
+  }catch(e){
+    $('#title').innerHTML = `<span class="error">Couldn't forecast this: ${e.message}</span>`;
+  }
+}
+
+function schedule(){ clearTimeout(timer); timer = setTimeout(run, 180); }
+
+async function loadCrop(){
+  HIST = await api(`/api/history?area=${encodeURIComponent($('#area').value)}&item=${encodeURIComponent($('#item').value)}`);
+  setRanges(HIST); run();
+}
+
+function fillCrops(prefer){
+  const crops = META.countries[$('#area').value];
+  $('#item').innerHTML = crops.map(c=>`<option>${c}</option>`).join('');
+  $('#item').value = crops.includes(prefer) ? prefer : crops[0];
+}
+
+function renderBench(){
+  const a = META.audit, e = META.evaluation;
+  $('#leak').textContent = Math.round(a.random_split.leaked_share*100) + '%';
+  const rows = [
+    ['Extra Trees, random split (the usual claim)', a.random_split],
+    ['Extra Trees, tested on unseen years 2009–13', a.future_years],
+    ['Extra Trees, tested on unseen countries', a.unseen_countries],
+    ['Repeat last season\'s yield (baseline)', e.naive_last_year],
+    ['CropCast, tested on unseen years 2009–13', e.cropcast, true],
+  ];
+  $('#bench tbody').innerHTML = rows.map(([n,m,ours]) => `<tr${ours?' class="ours"':''}><td>${n}</td><td class="num">${fmt(m.r2,3)}</td><td class="num">${fmt(tha(m.mae))}</td></tr>`).join('');
+  const gain = (1 - e.cropcast.mae/a.future_years.mae)*100, vsNaive = (1 - e.cropcast.mae/e.naive_last_year.mae)*100;
+  $('#callout').textContent = `On genuinely new seasons CropCast's error is ${fmt(gain,0)}% lower than the Extra Trees model and ${fmt(vsNaive,1)}% lower than simply repeating last year. Its 80% ranges contained the true yield ${fmt(e.interval_coverage*100,1)}% of the time across ${e.n_test.toLocaleString('en-IN')} test seasons.`;
+}
+
+(async function init(){
+  META = await api('/api/meta');
+  const areas = Object.keys(META.countries);
+  $('#area').innerHTML = areas.map(a=>`<option>${a}</option>`).join('');
+  $('#area').value = 'India'; fillCrops('Wheat');
+  renderBench();
+  $('#area').onchange = () => { fillCrops($('#item').value); loadCrop(); };
+  $('#item').onchange = loadCrop;
+  for(const k of ['temp','rain','pest']){
+    $('#'+k+'-r').oninput = e => { $('#'+k).value = +(+e.target.value).toFixed(k==='temp'?2:0); schedule(); };
+    $('#'+k).oninput = e => { $('#'+k+'-r').value = e.target.value; schedule(); };
+  }
+  $('#reset').onclick = () => { setRanges(HIST); run(); };
+  loadCrop();
+  let rz; window.addEventListener('resize', () => { clearTimeout(rz); rz = setTimeout(() => LAST && drawChart(LAST), 150); });
+})();
+</script>
+</body>
+</html>
